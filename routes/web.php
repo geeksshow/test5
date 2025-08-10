@@ -47,8 +47,8 @@ Route::get('/api/cart-count', [ApiController::class, 'getCartCount']);
 // JWT Auth routes (views and actions)
 Route::get('/jwt/login', [JWTAuthController::class, 'showLoginForm'])->name('jwt.login');
 Route::get('/jwt/register', [JWTAuthController::class, 'showRegisterForm'])->name('jwt.register');
-Route::post('/jwt/login', [JWTAuthController::class, 'login'])->middleware('rate.limit:5,1');
-Route::post('/jwt/register', [JWTAuthController::class, 'register'])->middleware('rate.limit:3,1');
+Route::post('/jwt/login', [JWTAuthController::class, 'login'])->name('jwt.login.submit');
+Route::post('/jwt/register', [JWTAuthController::class, 'register'])->name('jwt.register.submit');
 Route::post('/jwt/logout', [JWTAuthController::class, 'logout'])->name('jwt.logout');
 
 // Email verification routes
@@ -58,7 +58,7 @@ Route::post('/email/verify-otp', [EmailVerificationController::class, 'verifyOTP
 Route::get('/email/verification-status', [EmailVerificationController::class, 'checkVerificationStatus'])->name('email.verification-status');
 
 // JWT API endpoints
-Route::middleware(['auth:api'])->group(function () {
+Route::prefix('api')->middleware(['auth:api'])->group(function () {
     Route::get('/jwt/me', [JWTAuthController::class, 'me'])->name('jwt.me');
     Route::post('/jwt/refresh', [JWTAuthController::class, 'refresh'])->name('jwt.refresh');
 });

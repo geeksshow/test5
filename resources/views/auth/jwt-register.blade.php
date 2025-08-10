@@ -495,7 +495,7 @@
             };
             
             try {
-                const response = await fetch('/jwt/register', {
+                const response = await fetch('{{ route("jwt.register.submit") }}', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',

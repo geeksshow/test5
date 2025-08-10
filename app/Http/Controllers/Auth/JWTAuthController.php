@@ -41,43 +41,45 @@ class JWTAuthController extends Controller
                 ], 422);
             }
 
-            // Try to authenticate with Laravel's built-in auth
-            if (Auth::attempt($request->only('email', 'password'))) {
-                $user = Auth::user();
-                
-                try {
-                    // Generate JWT token
-                    $token = JWTAuth::fromUser($user);
-                } catch (JWTException $e) {
-                    Log::error('JWT Token creation failed: ' . $e->getMessage());
+            $credentials = $request->only('email', 'password');
+
+            try {
+                // Try to authenticate and generate JWT token
+                if (!$token = JWTAuth::attempt($credentials)) {
+                    Log::warning('Failed login attempt for email: ' . $request->email);
                     return response()->json([
                         'success' => false,
-                        'message' => 'Could not create token'
-                    ], 500);
+                        'message' => 'Invalid email or password'
+                    ], 401);
                 }
-
-                Log::info('Successful login for user: ' . $user->email);
-
-                return response()->json([
-                    'success' => true,
-                    'message' => 'Login successful',
-                    'access_token' => $token,
-                    'user' => [
-                        'id' => $user->id,
-                        'name' => $user->name,
-                        'email' => $user->email,
-                        'email_verified_at' => $user->email_verified_at,
-                        'avatar' => $user->avatar,
-                        'provider' => $user->provider
-                    ]
-                ]);
-            } else {
-                Log::warning('Failed login attempt for email: ' . $request->email);
+            } catch (JWTException $e) {
+                Log::error('JWT Token creation failed: ' . $e->getMessage());
                 return response()->json([
                     'success' => false,
-                    'message' => 'Invalid email or password'
-                ], 401);
+                    'message' => 'Could not create token'
+                ], 500);
             }
+
+            // Get the authenticated user
+            $user = Auth::user();
+            
+            Log::info('Successful login for user: ' . $user->email);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Login successful',
+                'access_token' => $token,
+                'token_type' => 'bearer',
+                'expires_in' => JWTAuth::factory()->getTTL() * 60,
+                'user' => [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'email_verified_at' => $user->email_verified_at,
+                    'avatar' => $user->avatar,
+                    'provider' => $user->provider
+                ]
+            ]);
 
         } catch (\Exception $e) {
             Log::error('Login error: ' . $e->getMessage());
@@ -113,13 +115,13 @@ class JWTAuthController extends Controller
             ]);
 
             try {
-                // Generate JWT token
+                // Generate JWT token for the new user
                 $token = JWTAuth::fromUser($user);
             } catch (JWTException $e) {
                 Log::error('JWT Token creation failed: ' . $e->getMessage());
                 return response()->json([
                     'success' => false,
-                    'message' => 'Could not create token'
+                    'message' => 'User created but could not create token'
                 ], 500);
             }
 
@@ -129,6 +131,8 @@ class JWTAuthController extends Controller
                 'success' => true,
                 'message' => 'User registered successfully',
                 'access_token' => $token,
+                'token_type' => 'bearer',
+                'expires_in' => JWTAuth::factory()->getTTL() * 60,
                 'user' => [
                     'id' => $user->id,
                     'name' => $user->name,
@@ -148,7 +152,7 @@ class JWTAuthController extends Controller
         }
     }
 
-    public function logout()
+    public function logout(Request $request)
     {
         try {
             $token = JWTAuth::getToken();
@@ -209,7 +213,9 @@ class JWTAuthController extends Controller
             
             return response()->json([
                 'success' => true,
-                'access_token' => $token
+                'access_token' => $token,
+                'token_type' => 'bearer',
+                'expires_in' => JWTAuth::factory()->getTTL() * 60
             ]);
         } catch (JWTException $e) {
             return response()->json([

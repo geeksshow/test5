@@ -351,7 +351,7 @@
                 };
                 
                 try {
-                    const response = await fetch('/jwt/login', {
+                    const response = await fetch('{{ route("jwt.login.submit") }}', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
