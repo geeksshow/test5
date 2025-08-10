@@ -350,6 +350,8 @@
                     password: formData.get('password')
                 };
                 
+                console.log('Attempting login with:', { email: data.email, password: '***' });
+                
                 try {
                     const response = await fetch('{{ route("jwt.login.submit") }}', {
                         method: 'POST',
@@ -361,6 +363,7 @@
                     });
                     
                     const result = await response.json();
+                    console.log('Login response:', result);
                     
                     if (result.success) {
                         // Store token and user data
@@ -376,6 +379,7 @@
                             window.location.href = '/';
                         }, 1500);
                     } else {
+                        console.error('Login failed:', result);
                         // Show error message
                         if (result.errors) {
                             showFieldErrors(result.errors);

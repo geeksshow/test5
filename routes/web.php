@@ -51,6 +51,9 @@ Route::post('/jwt/login', [JWTAuthController::class, 'login'])->name('jwt.login.
 Route::post('/jwt/register', [JWTAuthController::class, 'register'])->name('jwt.register.submit');
 Route::post('/jwt/logout', [JWTAuthController::class, 'logout'])->name('jwt.logout');
 
+// Debug route (remove in production)
+Route::get('/debug/user', [JWTAuthController::class, 'debugUser'])->name('debug.user');
+
 // Email verification routes
 use App\Http\Controllers\Auth\EmailVerificationController;
 Route::post('/email/send-otp', [EmailVerificationController::class, 'sendOTP'])->middleware('rate.limit:3,1')->name('email.send-otp');

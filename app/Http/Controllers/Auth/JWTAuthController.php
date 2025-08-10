@@ -42,14 +42,34 @@ class JWTAuthController extends Controller
             }
 
             $credentials = $request->only('email', 'password');
+            
+            // First check if user exists
+            $user = User::where('email', $credentials['email'])->first();
+            
+            if (!$user) {
+                Log::warning('Login attempt with non-existent email: ' . $credentials['email']);
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Invalid email or password'
+                ], 401);
+            }
+
+            // Check password manually first
+            if (!Hash::check($credentials['password'], $user->password)) {
+                Log::warning('Failed login attempt for email: ' . $credentials['email'] . ' - Wrong password');
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Invalid email or password'
+                ], 401);
+            }
 
             try {
                 // Try to authenticate and generate JWT token
                 if (!$token = JWTAuth::attempt($credentials)) {
-                    Log::warning('Failed login attempt for email: ' . $request->email);
+                    Log::warning('JWT authentication failed for email: ' . $credentials['email']);
                     return response()->json([
                         'success' => false,
-                        'message' => 'Invalid email or password'
+                        'message' => 'Authentication failed'
                     ], 401);
                 }
             } catch (JWTException $e) {
@@ -61,9 +81,13 @@ class JWTAuthController extends Controller
             }
 
             // Get the authenticated user
-            $user = Auth::user();
+            $authenticatedUser = Auth::user();
             
-            Log::info('Successful login for user: ' . $user->email);
+            if (!$authenticatedUser) {
+                $authenticatedUser = $user;
+            }
+            
+            Log::info('Successful login for user: ' . $authenticatedUser->email);
 
             return response()->json([
                 'success' => true,
@@ -72,20 +96,21 @@ class JWTAuthController extends Controller
                 'token_type' => 'bearer',
                 'expires_in' => JWTAuth::factory()->getTTL() * 60,
                 'user' => [
-                    'id' => $user->id,
-                    'name' => $user->name,
-                    'email' => $user->email,
-                    'email_verified_at' => $user->email_verified_at,
-                    'avatar' => $user->avatar,
-                    'provider' => $user->provider
+                    'id' => $authenticatedUser->id,
+                    'name' => $authenticatedUser->name,
+                    'email' => $authenticatedUser->email,
+                    'email_verified_at' => $authenticatedUser->email_verified_at,
+                    'avatar' => $authenticatedUser->avatar,
+                    'provider' => $authenticatedUser->provider
                 ]
             ]);
 
         } catch (\Exception $e) {
             Log::error('Login error: ' . $e->getMessage());
+            Log::error('Login error trace: ' . $e->getTraceAsString());
             return response()->json([
                 'success' => false,
-                'message' => 'An error occurred during login'
+                'message' => 'An error occurred during login: ' . $e->getMessage()
             ], 500);
         }
     }
@@ -107,25 +132,58 @@ class JWTAuthController extends Controller
                 ], 422);
             }
 
+            // Create user with proper password hashing
             $user = User::create([
                 'name' => $request->name,
                 'email' => $request->email,
                 'password' => Hash::make($request->password),
-                'email_verified_at' => now(), // Auto-verify for now
+                'email_verified_at' => now(), // Auto-verify for JWT users
+                'provider' => null,
+                'provider_id' => null,
+                'avatar' => null,
             ]);
 
-            try {
-                // Generate JWT token for the new user
-                $token = JWTAuth::fromUser($user);
-            } catch (JWTException $e) {
-                Log::error('JWT Token creation failed: ' . $e->getMessage());
+            if (!$user) {
+                Log::error('Failed to create user for email: ' . $request->email);
                 return response()->json([
                     'success' => false,
-                    'message' => 'User created but could not create token'
+                    'message' => 'Failed to create user account'
                 ], 500);
             }
 
-            Log::info('New user registered: ' . $user->email);
+            // Verify user was created and password is correct
+            $createdUser = User::where('email', $request->email)->first();
+            if (!$createdUser || !Hash::check($request->password, $createdUser->password)) {
+                Log::error('User creation verification failed for email: ' . $request->email);
+                return response()->json([
+                    'success' => false,
+                    'message' => 'User account creation verification failed'
+                ], 500);
+            }
+
+            try {
+                // Generate JWT token for the new user
+                $credentials = [
+                    'email' => $request->email,
+                    'password' => $request->password
+                ];
+                
+                $token = JWTAuth::attempt($credentials);
+                
+                if (!$token) {
+                    // Fallback: generate token directly from user
+                    $token = JWTAuth::fromUser($user);
+                }
+                
+            } catch (JWTException $e) {
+                Log::error('JWT Token creation failed during registration: ' . $e->getMessage());
+                return response()->json([
+                    'success' => false,
+                    'message' => 'User created but could not create authentication token. Please try logging in.'
+                ], 500);
+            }
+
+            Log::info('New user registered successfully: ' . $user->email);
 
             return response()->json([
                 'success' => true,
@@ -145,9 +203,10 @@ class JWTAuthController extends Controller
 
         } catch (\Exception $e) {
             Log::error('Registration error: ' . $e->getMessage());
+            Log::error('Registration error trace: ' . $e->getTraceAsString());
             return response()->json([
                 'success' => false,
-                'message' => 'An error occurred during registration'
+                'message' => 'An error occurred during registration: ' . $e->getMessage()
             ], 500);
         }
     }
@@ -223,5 +282,39 @@ class JWTAuthController extends Controller
                 'message' => 'Token cannot be refreshed'
             ], 401);
         }
+    }
+
+    // Debug method to check user credentials (remove in production)
+    public function debugUser(Request $request)
+    {
+        if (app()->environment('production')) {
+            return response()->json(['error' => 'Not available in production'], 403);
+        }
+
+        $email = $request->get('email');
+        $password = $request->get('password');
+
+        if (!$email) {
+            return response()->json(['error' => 'Email required'], 400);
+        }
+
+        $user = User::where('email', $email)->first();
+
+        if (!$user) {
+            return response()->json(['error' => 'User not found'], 404);
+        }
+
+        $passwordCheck = $password ? Hash::check($password, $user->password) : null;
+
+        return response()->json([
+            'user_exists' => true,
+            'user_id' => $user->id,
+            'email' => $user->email,
+            'name' => $user->name,
+            'email_verified' => !is_null($user->email_verified_at),
+            'password_check' => $passwordCheck,
+            'created_at' => $user->created_at,
+            'updated_at' => $user->updated_at
+        ]);
     }
 }
