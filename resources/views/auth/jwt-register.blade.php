@@ -487,32 +487,17 @@
             registerBtnLoading.classList.remove('hidden');
             
             const formData = new FormData(this);
-            const data = {
-                name: formData.get('name'),
-                email: formData.get('email'),
-                password: formData.get('password'),
-                password_confirmation: formData.get('password_confirmation')
-            };
+            const name = formData.get('name');
+            const email = formData.get('email');
+            const password = formData.get('password');
+            const passwordConfirmation = formData.get('password_confirmation');
             
             try {
-                const response = await fetch('{{ route("jwt.register.submit") }}', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-                    },
-                    body: JSON.stringify(data)
-                });
-                
-                const result = await response.json();
+                const result = await window.jwtAuth.register(name, email, password, passwordConfirmation);
                 
                 if (result.success) {
-                    // Store token
-                    localStorage.setItem('jwt_token', result.access_token);
-                    localStorage.setItem('user_data', JSON.stringify(result.user));
-                    
                     // Show success message
-                    successText.textContent = result.message;
+                    successText.textContent = result.data.message;
                     successMessage.classList.remove('hidden');
                     
                     // Redirect after delay

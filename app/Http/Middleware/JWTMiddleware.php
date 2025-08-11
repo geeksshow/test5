@@ -14,10 +14,25 @@ class JWTMiddleware
 {
     /**
      * Handle an incoming request.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @param  \Closure(\Illuminate\Http\Request): (\Symfony\Component\HttpFoundation\Response)  $next
+     * @return \Symfony\Component\HttpFoundation\Response
      */
     public function handle(Request $request, Closure $next): Response
     {
         try {
+            // Check if token is present
+            $token = JWTAuth::getToken();
+            
+            if (!$token) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Token not provided'
+                ], 401);
+            }
+
+            // Try to authenticate user
             $user = JWTAuth::parseToken()->authenticate();
             
             if (!$user) {
@@ -30,20 +45,29 @@ class JWTMiddleware
         } catch (TokenExpiredException $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Token has expired'
+                'message' => 'Token has expired',
+                'error_code' => 'TOKEN_EXPIRED'
             ], 401);
             
         } catch (TokenInvalidException $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Token is invalid'
+                'message' => 'Token is invalid',
+                'error_code' => 'TOKEN_INVALID'
             ], 401);
             
         } catch (JWTException $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Token is required'
+                'message' => 'Token error: ' . $e->getMessage(),
+                'error_code' => 'TOKEN_ERROR'
             ], 401);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Authorization error',
+                'error_code' => 'AUTH_ERROR'
+            ], 500);
         }
 
         return $next($request);

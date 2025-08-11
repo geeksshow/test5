@@ -47,12 +47,6 @@ Route::get('/api/cart-count', [ApiController::class, 'getCartCount']);
 // JWT Auth routes (views and actions)
 Route::get('/jwt/login', [JWTAuthController::class, 'showLoginForm'])->name('jwt.login');
 Route::get('/jwt/register', [JWTAuthController::class, 'showRegisterForm'])->name('jwt.register');
-Route::post('/jwt/login', [JWTAuthController::class, 'login'])->name('jwt.login.submit');
-Route::post('/jwt/register', [JWTAuthController::class, 'register'])->name('jwt.register.submit');
-Route::post('/jwt/logout', [JWTAuthController::class, 'logout'])->name('jwt.logout');
-
-// Debug route (remove in production)
-Route::get('/debug/user', [JWTAuthController::class, 'debugUser'])->name('debug.user');
 
 // Email verification routes
 use App\Http\Controllers\Auth\EmailVerificationController;

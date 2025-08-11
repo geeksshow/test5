@@ -308,6 +308,12 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
+            // Load auth helper
+            if (typeof window.jwtAuth === 'undefined') {
+                console.error('JWT Auth helper not loaded');
+                return;
+            }
+
             // Toggle password visibility
             document.getElementById('togglePassword').addEventListener('click', function() {
                 const passwordInput = document.getElementById('password');
@@ -345,33 +351,18 @@
                 loginBtnLoading.classList.remove('hidden');
                 
                 const formData = new FormData(this);
-                const data = {
-                    email: formData.get('email'),
-                    password: formData.get('password')
-                };
+                const email = formData.get('email');
+                const password = formData.get('password');
                 
-                console.log('Attempting login with:', { email: data.email, password: '***' });
+                console.log('Attempting login with:', { email: email, password: '***' });
                 
                 try {
-                    const response = await fetch('{{ route("jwt.login.submit") }}', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-                        },
-                        body: JSON.stringify(data)
-                    });
-                    
-                    const result = await response.json();
+                    const result = await window.jwtAuth.login(email, password);
                     console.log('Login response:', result);
                     
                     if (result.success) {
-                        // Store token and user data
-                        localStorage.setItem('jwt_token', result.access_token);
-                        localStorage.setItem('user_data', JSON.stringify(result.user));
-                        
                         // Show success message
-                        successText.textContent = result.message;
+                        successText.textContent = result.data.message;
                         successMessage.classList.remove('hidden');
                         
                         // Redirect after delay

@@ -514,10 +514,14 @@
 
     <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="{{ asset('resources/js/auth.js') }}"></script>
     
     <script>
         // Initialize tooltips
         document.addEventListener('DOMContentLoaded', function() {
+            // Check if user is logged in and update UI
+            updateAuthUI();
+            
             var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
             var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
                 return new bootstrap.Tooltip(tooltipTriggerEl);
@@ -530,6 +534,45 @@
             updateCartBadge();
         });
 
+        // Update authentication UI
+        function updateAuthUI() {
+            if (window.jwtAuth && window.jwtAuth.isAuthenticated()) {
+                const user = window.jwtAuth.getUser();
+                if (user) {
+                    // Update auth buttons to show user info
+                    const authButtons = document.querySelector('.auth-buttons');
+                    if (authButtons) {
+                        authButtons.innerHTML = `
+                            <div class="dropdown">
+                                <button class="auth-btn dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                    <i class="fas fa-user me-2"></i>${user.name}
+                                </button>
+                                <ul class="dropdown-menu">
+                                    <li><a class="dropdown-item" href="#" onclick="showProfile()">Profile</a></li>
+                                    <li><a class="dropdown-item" href="#" onclick="logout()">Logout</a></li>
+                                </ul>
+                            </div>
+                        `;
+                    }
+                }
+            }
+        }
+
+        // Logout function
+        async function logout() {
+            if (window.jwtAuth) {
+                await window.jwtAuth.logout();
+                window.location.reload();
+            }
+        }
+
+        // Show profile function
+        function showProfile() {
+            if (window.jwtAuth) {
+                const user = window.jwtAuth.getUser();
+                alert(`Profile: ${user.name} (${user.email})`);
+            }
+        }
         // Load featured products
         function loadFeaturedProducts() {
             fetch('/api/featured-products')
