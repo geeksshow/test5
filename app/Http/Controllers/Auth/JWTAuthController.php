@@ -136,7 +136,7 @@ class JWTAuthController extends Controller
             $user = User::create([
                 'name' => $request->name,
                 'email' => $request->email,
-                'password' => Hash::make($request->password),
+                'password' => $request->password, // Laravel will auto-hash this due to 'hashed' cast
                 'email_verified_at' => now(), // Auto-verify for JWT users
                 'provider' => null,
                 'provider_id' => null,
@@ -148,16 +148,6 @@ class JWTAuthController extends Controller
                 return response()->json([
                     'success' => false,
                     'message' => 'Failed to create user account'
-                ], 500);
-            }
-
-            // Verify user was created and password is correct
-            $createdUser = User::where('email', $request->email)->first();
-            if (!$createdUser || !Hash::check($request->password, $createdUser->password)) {
-                Log::error('User creation verification failed for email: ' . $request->email);
-                return response()->json([
-                    'success' => false,
-                    'message' => 'User account creation verification failed'
                 ], 500);
             }
 

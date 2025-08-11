@@ -72,10 +72,14 @@ class User extends Authenticatable implements JWTSubject, MustVerifyEmail
     }
 
     /**
-     * Override the default password mutator to ensure proper hashing
+     * The attributes that should be cast.
+     *
+     * @return array<string, string>
      */
-    public function setPasswordAttribute($password)
+    protected function casts(): array
     {
-        $this->attributes['password'] = bcrypt($password);
+        return [
+            'email_verified_at' => 'datetime',
+            'password' => 'hashed',
+        ];
     }
-}

@@ -166,7 +166,7 @@ class ForgotPasswordController extends Controller
                 ], 404);
             }
 
-            $user->password = Hash::make($password);
+            $user->password = $password; // Will be auto-hashed due to 'hashed' cast
             $user->save();
 
             // Delete used OTP

@@ -235,7 +235,7 @@ class SocialAuthController extends Controller
         return User::create([
             'name' => $data['name'],
             'email' => $data['email'],
-            'password' => Hash::make(Str::random(32)), // Random password for social users
+            'password' => Str::random(32), // Random password for social users (will be auto-hashed)
             'provider' => $data['provider'],
             'provider_id' => $data['provider_id'],
             'avatar' => $data['avatar'],

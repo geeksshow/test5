@@ -380,7 +380,7 @@ class OTPController extends Controller
                 ], 404);
             }
 
-            $user->password = bcrypt($password);
+            $user->password = $password; // Will be auto-hashed due to 'hashed' cast
             $user->save();
 
             // Clear OTP verification
